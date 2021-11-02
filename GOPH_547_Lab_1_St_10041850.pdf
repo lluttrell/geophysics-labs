@@ -1,0 +1,223 @@
+\documentclass[11pt,letterpaper]{article}
+\usepackage[left=1in,right=1in,top=1in,bottom=1in]{geometry}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{parskip}
+\usepackage{float}
+
+%color for lst listings
+\usepackage{color}
+\definecolor{mygreen}{RGB}{28,172,0} % color values Red, Green, Blue
+\definecolor{mylilas}{RGB}{170,55,241}
+
+\usepackage{listings}
+
+\lstset{language=Matlab,%
+    %basicstyle=\color{red},
+    breaklines=true,%
+    morekeywords={matlab2tikz},
+    keywordstyle=\color{blue},%
+    morekeywords=[2]{1}, keywordstyle=[2]{\color{black}},
+    identifierstyle=\color{black},
+    stringstyle=\color{mylilas},
+    commentstyle=\color{mygreen},
+    showstringspaces=false,
+    numbers=left,%
+    numberstyle={\tiny \color{black}},% size of the numbers
+    numbersep=9pt, % this defines how far the numbers are from the text
+    emph=[1]{for,end,break},emphstyle=[1]\color{red}, %some words to emphasise
+    %emph=[2]{word1,word2}, emphstyle=[2]{style},    
+}
+
+\author{Richard Williams}
+\title{GOPH 547 Lab Assignment \#1}
+\date{\today}
+
+\begin{document}
+\maketitle
+\section{Abstract}
+
+\section{Theory}
+The gravitational potential \(U\) at a survey point \(\mathbf{x}=x\hat{\mathbf{i}}+y\hat{\mathbf{y}}+z\hat{\mathbf{k}}\) due to a concentrated mass \(m\) at point \(\mathbf{x}_m=x_m\hat{\mathbf{i}}+y_m\hat{\mathbf{y}}+z_m\hat{\mathbf{k}}\) is given by
+
+\begin{equation} \label{eg:pot}
+U(r) = \frac{Gm}{r} = \frac{Gm}{\left|\left| \mathbf{x}-\mathbf{x}_m \right|\right|}
+\end{equation}
+
+where G is the gravitational constant, and \(r\) is the magnitude of the distance between \(\mathbf{x}\) and \(\mathbf{x}_m\). The gravitational acceleration \(\mathbf{g}\) can be determined easier through experiments and is given by the negative gradient of the gravitational potential
+
+\begin{equation}
+\mathbf{g} = -\nabla U
+\end{equation}
+
+In geophysical surveys it is often the z-component of \(\mathbf{g}\) that is measured. This is called the gravity effect and is related to the gravitational potential by the equation
+
+\begin{align}
+g_z &= - \frac{\partial U}{\partial{z}} \\
+g_z &= Gm\frac{z-z_m}{r^3} \label{eq:geffect}
+\end{align}
+
+For a homogeneous spherical mass it can be shown using the divergence theorem that the gravitational potential (and therefore gravity effect) anywhere outside of the sphere is the same as if the mass were a point mass located at the centre of the sphere. 
+
+%group of masses, talk about COM
+For a group of masses, the gravitational potential at any point is a superposition of the potential due to each individual mass.
+
+%do first vertical derivative here
+
+The second vertical derivative of \(g\) can be determined from the Laplace equation
+\begin{align}
+\nabla^2 g &= 0 \\
+\frac{\partial^2 g}{\partial z^2} &= -\left(\frac{\partial^2 g}{\partial x^2}+\frac{\partial^2 g}{\partial y^2} \right)
+\end{align}
+
+Therefore the second vertical derivative can determined from one survey, by computing the second derivatives in the x and y directions. For a survey performed on a grid with sample spacing \(\Delta x\) and \(\Delta y\), the second vertical derivative is given as
+
+\begin{equation}
+\left(\frac{\partial^2 g}{\partial z^2}\right)_{i,j} = \frac{2\left(\Delta x^2+\Delta y^2 \right) g_{i,j} - \left[\Delta x^2\left(g_{i+1,j}+g_{i-1,j}\right)+\Delta y^2 \left(g_{i,j+1} + g_{i,j-1} \right) \right]}
+{\Delta x^2 \Delta y^2}
+\end{equation}
+
+\section{Methods}
+All computations were done using MatLab R2015b.
+
+Equations \ref{eg:pot} and \ref{eq:geffect} were used to create functions to compute the gravitational potential and gravity effect at a point at a field point x due to a mass of magnitude m at a mass point xm. The functions took input vectors for x and xm  as well as values for m and G, and returned the gravitational potential and gravity effect. Both functions used the norm() function to determine the distance between x and xm. The code for the gravitational potential is shown below.
+
+\begin{lstlisting}
+function [U] = grav_pot_point(x,xm,m,G)
+r = norm(x-xm);
+U = G*m/r;
+\end{lstlisting}
+
+A spherical mass of \(1.0\times 10^7 \text{ kg}\) with center at (0,0,-10)m was modeled as a point mass at the centre of the sphere. The field points were assumed to be outside of the anomaly. The Gravitational potential and gravity effect of the for each point on a \(100\text{m}\times100\text{m}\) meshgrid with grid spacing of 25.0m and 5.0 and at heights of z. This was done by looping over the meshgrid using the potential and gravity effect functions
+
+\begin{lstlisting}
+%compute potential and gravity effect at each location in meshgrid
+U0 = zeros(size(X));
+gz0 = zeros(size(X));
+Z = 0;
+for i = 1:nx,
+    for j = 1:ny,
+        U0(i,j) = grav_pot_point([X(i,j),Y(i,j),Z],xm,m,G);
+        gz0(i,j) = grav_eff_point([X(i,j),Y(i,j),Z],xm,m,G);
+    end
+end
+\end{lstlisting}
+
+Contour maps of the gravitational potential and gravity effect of the mass were created from the data. The survey points were plotted on top of the 25m spaced graphs, but omitted from the 5m plots for clarity.
+
+Five sets of masses were created, each having five point masses with a combined mass of \(1.0\times 10^7 \text{ kg}\), and a centre of mass at (0,0,-10)m. The location and mass of the first four masses in each set were determined using the prescribed means and standard deviations using the anonymous function
+
+\begin{lstlisting}
+rand_num = @(mean,std) mean + std*randn(1); %function for normal dist rand number
+\end{lstlisting}
+
+The mass of the fifth object was determined by subtracting the sum of the other four masses from the total mass. The location of the fifth object was determined by solving the centre of mass equation
+
+\begin{lstlisting}
+%determine mass of fifth object
+m(5,1) = m_tot - (m(1,1)+m(2,1)+m(3,1)+m(4,1));
+
+%determine location of fifth object
+for i = 1:3
+    xm(5,i) = -1.0*(m(1,1)*xm(1,i)+m(2,1)*xm(2,i)+m(3,1)*xm(3,i)+m(4,1)*xm(4,i))/m(5,1);
+    if i == 3
+        xm(5,i) = (-10 -(m(1,1)*xm(1,i)+m(2,1)*xm(2,i)+m(3,1)*xm(3,i)+m(4,1)*xm(4,i)))/m(5,1);
+    end
+end
+\end{lstlisting}
+
+Contour maps of the gravitational potential and gravity effect were made for each mass set using the same method as for the single buried mass. The potential and gravity effect was determined by summing the effects of each individual mass.
+
+Data for an anomaly with randomly distributed density was loaded, and density cross sections of the anomaly were plotted. The total mass was determined by integration. The volume element dV was determined by finding the volume of the cube defined by the x,y and z grid spacing for the anomaly data. The density at each point was multiplied by the volume element and the results were summed over the entire dataset.
+
+\begin{lstlisting}
+%determine volume elemet dV
+dx = x(1,2,1)-x(1,1,1);
+dy = y(2,1,1)-y(1,1,1);
+dz = z(1,1,2)-z(1,1,1);
+dV = dx*dy*dz;
+
+ind_nz = find(rho); %finds non-zero rho
+nnz = length(ind_nz); %number of non-zero locations
+
+% determine total mass
+[X,Y] = meshgrid(x(1,:,1),y(:,1,1)); %set up grid over survey area
+Nx = size(X,1);
+Ny = size(Y,1);
+
+m_tot = 0; %total mass (to be filled in)
+
+%integrates mass over volume
+for i = 1:Ny,
+    for j = 1:Nx,
+        for k = 1:nnz,
+            kk = ind_nz(k);
+            dm = rho(kk)*dV;
+            m_tot = m_tot+dm;
+        end
+    end
+end
+\end{lstlisting}
+
+
+\section{Results/Discussion}
+\begin{figure}[H]
+	\includegraphics[scale=1]{single_mass_25m.pdf}
+	\caption{Gravitational potential and gravity effect for single buried mass with grid spacing of 25.0m}
+\end{figure}
+
+\begin{figure}[H]
+	\includegraphics[scale=1]{single_mass_5m.pdf}
+	\caption{Gravitational potential and gravity effect for single buried mass with grid spacing of 5.0m}
+\end{figure}
+
+\begin{figure}[H]
+	\includegraphics[scale=1]{mass_set_4_5m.pdf}
+	\caption{Gravitational potential and gravity effect for mass set 4 with grid spacing of 5.0m}
+\end{figure}
+
+\begin{figure}[H]
+	\includegraphics[scale=1]{mass_set_4_25m.pdf}
+	\caption{Gravitational potential and gravity effect for mass set 4 with grid spacing of 25.0m}
+\end{figure}
+
+\begin{figure}[H]
+	\includegraphics[scale=1]{density_sections.pdf}
+	\caption{Density cross-section of anomaly}
+\end{figure}
+
+\begin{figure}[H]
+	\includegraphics[scale=1]{data_grav_effect_5m.pdf}
+	\caption{Simulated gravity effect for anomaly with survey spacing of 5.0m}
+\end{figure}
+
+\begin{figure}[H]
+	\includegraphics[scale=1]{data_grav_effect_25m.pdf}
+	\caption{Simulated gravity effect for anomaly with survey spacing of 25.0m}
+\end{figure}
+
+\begin{figure}[H]
+	\includegraphics[scale=1]{data_dgdz_5m.pdf}
+	\caption{Simulated First Vertical Derivative for anomaly with survey spacing of 5.0m}
+\end{figure}
+
+\begin{figure}[H]
+	\includegraphics[scale=1]{data_dgdz_25m.pdf}
+	\caption{Simulated First Vertical Derivative for anomaly with survey spacing of 25.0m}
+\end{figure}
+
+\begin{figure}[H]
+	\includegraphics[scale=1]{data_dzz_5m.pdf}
+	\caption{Simulated Second Vertical Derivative for anomaly with survey spacing of 5.0m}
+\end{figure}
+
+\begin{figure}[H]
+	\includegraphics[scale=1]{data_dzz_25m.pdf}
+	\caption{Simulated Second Vertical Derivative for anomaly with survey spacing of 25.0m}
+\end{figure}
+
+\section{Conclusion}
+\end{document}
